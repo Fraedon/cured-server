@@ -1,10 +1,18 @@
+from flask_cors import CORS
 from flask import Flask, request, jsonify
 from google.cloud.automl_v1beta1 import PredictionServiceClient
+import firebase_admin
+from firebase_admin import firestore, credentials
 app = Flask(__name__)
+CORS(app, resources={r"*": {"origins": "*"}})
 
 """get_prediction returns the highest prediction result from AutoML
 in the form of a tuple: (sentiment name, prediction score)
 """
+
+firebase_admin.initialize_app(credential=credentials.Certificate(
+    "./firebase.service.json"))
+db = firestore.client()
 
 
 def get_prediction(phrase):
@@ -39,6 +47,13 @@ def add_sentiment():
     user = request.json.get("user", "")      # The user's ID
 
     response = get_prediction(phrase)
+    data = {
+        "name": response[0],
+        "score": response[1],
+    }
+
+    # Store in Firebase
+    db.collection("sentiments").add(data)
 
     return jsonify({
         "name": response[0],
